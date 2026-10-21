@@ -19,3 +19,7 @@
 ## Follow-ups
 
 <!-- Anything left for later or waiting on someone else. Delete this section if there's nothing. -->
+
+## Refuted review findings
+
+<!-- Any findings from automated reviews that aren't correct, intentional or being ignored -->
