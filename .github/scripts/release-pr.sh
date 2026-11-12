@@ -12,7 +12,7 @@ shas=$(git rev-list "$range")
 # them the merge commit of the PR that carried them in. Not --search: its index can lag the merge behind this run.
 includes=$(gh pr list --state merged -L 1000 \
     --json number,title,author,headRefName,mergeCommit \
-    -q '.[] | select(.headRefName | test("^(dev|qa|main|master)$") | not)
+    -q '.[] | select(.headRefName | test("^(dev|qa|staging|main|master)$") | not)
         | "\(.mergeCommit.oid) - #\(.number) \(.title) (@\(.author.login))"' |
     awk 'NR == FNR {in_range[$1]; next} $1 in in_range {sub(/^[^ ]+ /, ""); print}' <(printf '%s\n' "$shas") - |
     sort -t'#' -k2n)
