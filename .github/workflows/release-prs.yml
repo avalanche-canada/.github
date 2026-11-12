@@ -6,6 +6,11 @@ name: Release PRs
 # The calling repo needs a "release" environment, limited to its stage branches, holding avcan-it's RELEASE_PR_TOKEN.
 on:
     workflow_call:
+        secrets:
+            # It lives in the caller's release environment, but the caller still has to pass it by name
+            # (RELEASE_PR_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}) or it arrives empty.
+            RELEASE_PR_TOKEN:
+                required: true
 
 jobs:
     release-pr:
