@@ -1,0 +1,36 @@
+name: Release PRs
+
+# Shared release PR job. Each repo calls it on pushes to dev and qa, and it keeps the next release PR open:
+# dev -> qa (or dev -> the default branch where there's no qa) and qa -> the default branch.
+# New release PRs get auto-merge, so one approval ships each stage.
+# The calling repo needs a "release" environment, limited to dev and qa, holding avcan-it's RELEASE_PR_TOKEN.
+on:
+    workflow_call:
+
+jobs:
+    release-pr:
+        runs-on: ubuntu-latest
+        concurrency: release-pr-${{ github.ref }}
+        # The calling repo's environment. Only dev and qa may use it, so a PR's workflow can't read the token.
+        environment: release
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  fetch-depth: 0
+            # shortcut: the script always comes from main, so a caller pinned to another ref of this workflow still
+            # gets main's script; pin both if a caller ever needs that.
+            - uses: actions/checkout@v6
+              with:
+                  repository: avalanche-canada/.github
+                  path: .release-pr
+                  sparse-checkout: .github/scripts
+            - run: |
+                  base=$DEFAULT_BRANCH
+                  if [ "$GITHUB_REF_NAME" = dev ] && git rev-parse -q --verify refs/remotes/origin/qa >/dev/null; then
+                      base=qa
+                  fi
+                  .release-pr/.github/scripts/release-pr.sh "$GITHUB_REF_NAME" "$base"
+              env:
+                  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+                  # Not GITHUB_TOKEN: PRs and merges made with it don't trigger the required checks or the next stage.
+                  GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
