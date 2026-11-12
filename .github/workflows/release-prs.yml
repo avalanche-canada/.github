@@ -1,9 +1,9 @@
 name: Release PRs
 
-# Shared release PR job. Each repo calls it on pushes to dev and qa, and it keeps the next release PR open:
-# dev -> qa (or dev -> the default branch where there's no qa) and qa -> the default branch.
+# Shared release PR job. Each repo calls it on pushes to its stage branches, and it keeps the PR into the next stage
+# open: dev -> qa -> staging -> the default branch, skipping any of qa and staging the repo doesn't have.
 # New release PRs get auto-merge, so one approval ships each stage.
-# The calling repo needs a "release" environment, limited to dev and qa, holding avcan-it's RELEASE_PR_TOKEN.
+# The calling repo needs a "release" environment, limited to its stage branches, holding avcan-it's RELEASE_PR_TOKEN.
 on:
     workflow_call:
 
@@ -11,7 +11,7 @@ jobs:
     release-pr:
         runs-on: ubuntu-latest
         concurrency: release-pr-${{ github.ref }}
-        # The calling repo's environment. Only dev and qa may use it, so a PR's workflow can't read the token.
+        # The calling repo's environment. Only stage branches may use it, so a PR's workflow can't read the token.
         environment: release
         steps:
             - uses: actions/checkout@v6
@@ -25,10 +25,18 @@ jobs:
                   path: .release-pr
                   sparse-checkout: .github/scripts
             - run: |
+                  case $GITHUB_REF_NAME in
+                      dev) next='qa staging' ;;
+                      qa) next=staging ;;
+                      *) next= ;;
+                  esac
                   base=$DEFAULT_BRANCH
-                  if [ "$GITHUB_REF_NAME" = dev ] && git rev-parse -q --verify refs/remotes/origin/qa >/dev/null; then
-                      base=qa
-                  fi
+                  for b in $next; do
+                      if git rev-parse -q --verify "refs/remotes/origin/$b" >/dev/null; then
+                          base=$b
+                          break
+                      fi
+                  done
                   .release-pr/.github/scripts/release-pr.sh "$GITHUB_REF_NAME" "$base"
               env:
                   DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
